@@ -36,7 +36,7 @@ func main() {
 					Required:  false,
 					Aliases:   []string{"s"},
 					Name:      "source",
-					Usage:     "OpenVPN (ideally v2.5.1) source code directory. Will download source code to tmp directory by default",
+					Usage:     "OpenVPN (ideally v2.6.17) source code directory. Will download source code to tmp directory by default",
 				},
 				&cli.StringFlag{
 					TakesFile: true,
@@ -51,7 +51,7 @@ func main() {
 					Required:  false,
 					Name:      "patch",
 					Aliases:   []string{"p"},
-					Value:     "scripts/openvpn-v2.5.1-aws.patch",
+					Value:     "scripts/openvpn-v2.6.17-aws.patch",
 					Usage:     "patch file to use against openvpn source code",
 				},
 			},

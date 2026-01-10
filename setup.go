@@ -12,13 +12,13 @@ import (
 )
 
 const (
-	OpenVPNSourceFolderName = "openvpn-2.5.1"
-	OpenVPNTarName          = "openvpn-2.5.1.tar.xz"
-	OpenVPNSource           = "https://swupdate.openvpn.org/community/releases/openvpn-2.5.1.tar.xz"
+	OpenVPNSourceFolderName = "openvpn-2.6.17"
+	OpenVPNTarName          = "openvpn-2.6.17.tar.gz"
+	OpenVPNSource           = "https://swupdate.openvpn.org/community/releases/openvpn-2.6.17.tar.gz"
 )
 
 var (
-	OpenVPNPatchScript      = path.Join("scripts", "openvpn-v2.5.1-aws.patch")
+	OpenVPNPatchScript      = path.Join("scripts", "openvpn-v2.6.17-aws.patch")
 	OpenVPNConfigureOptions = []string{
 		"--disable-debug",
 		"--disable-dependency-tracking",
