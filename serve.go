@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"strconv"
+	"time"
 
 	"embed"
 
@@ -25,6 +27,7 @@ type (
 		SAMLResponse chan string
 		ServiceIPv4  string
 		ServiceHost  string
+		SAMLServer   *http.Server
 	}
 )
 
@@ -84,7 +87,7 @@ func serveAction(c *cli.Context) error {
 	}
 
 	log.Info().Msgf("Starting HTTP server at: %s", handle.Config.Server.Addr)
-	go startSAMLServer(handle)
+	startSAMLServer(handle)
 
 	startOpenVPNConnection(handle)
 
@@ -168,6 +171,7 @@ func startOpenVPNConnection(handle *serveHandle) {
 	SAMLResponse := <-handle.SAMLResponse
 
 	log.Info().Msg("Received SAML response! Attempting to start OpenVPN client tunnel...")
+	stopSAMLServer(handle)
 
 	// Save auth file for openvpn
 	SID, err := extractSIDFromOpenVPN(string(out))
@@ -233,8 +237,35 @@ func startOpenVPNConnection(handle *serveHandle) {
 }
 
 func startSAMLServer(handle *serveHandle) {
-	http.HandleFunc("/", SAMLServer(handle))
-	http.ListenAndServe(handle.Config.Server.Addr, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", SAMLServer(handle))
+
+	handle.SAMLServer = &http.Server{
+		Addr:    handle.Config.Server.Addr,
+		Handler: mux,
+	}
+
+	go func() {
+		if err := handle.SAMLServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal().Err(err).Msg("SAML server stopped unexpectedly! " + errorSuffix)
+		}
+	}()
+}
+
+func stopSAMLServer(handle *serveHandle) {
+	if handle.SAMLServer == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := handle.SAMLServer.Shutdown(ctx); err != nil {
+		log.Warn().Err(err).Msg("Failed shutting down SAML callback server cleanly")
+		return
+	}
+
+	log.Info().Msg("Stopped SAML callback server.")
 }
 
 func writeEmbededHtmlFile(file embed.FS, filePath string, w http.ResponseWriter) {
@@ -269,8 +300,8 @@ func SAMLServer(handle *serveHandle) func(http.ResponseWriter, *http.Request) {
 				return
 			}
 
-			handle.SAMLResponse <- SAMLResponse
 			writeEmbededHtmlFile(welcomeHtmlFile, "html/index.html", w)
+			handle.SAMLResponse <- SAMLResponse
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			writeEmbededHtmlFile(errorHtmlFile, "html/error.html", w)
